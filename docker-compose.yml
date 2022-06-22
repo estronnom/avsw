@@ -1,0 +1,46 @@
+version: '3.2'
+services:
+
+  rabbitmq:
+    image: 'rabbitmq:3.6-management-alpine'
+    restart: 'always'
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    networks:
+      - 'rabbit_python'
+
+  db:
+    image: 'mysql'
+    restart: 'always'
+    environment:
+      MYSQL_USER: 'estronnom'
+      MYSQL_PASSWORD: '1234567890'
+      MYSQL_ROOT_PASSWORD: '1234567890'
+    ports:
+      - '3306:3306'
+    volumes:
+      - 'db-volume:/var/lib/mysql'
+    networks:
+      - 'rabbit_python'
+
+  spider:
+    build: './apps/spider/'
+    volumes:
+      - type: 'bind'
+        source: './processed_files'
+        target: '/spider/processed_files'
+      - type: 'bind'
+        source: './raw_files'
+        target: '/spider/raw_files'
+    networks:
+      - 'rabbit_python'
+
+networks:
+  rabbit_python:
+    driver: 'bridge'
+
+volumes:
+  db-volume:
+
+
