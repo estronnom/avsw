@@ -56,6 +56,17 @@ services:
     networks:
       - 'rabbit_python'
 
+  error_handler:
+    build: './apps/error_handler/'
+    env_file:
+      - '.env'
+    volumes:
+      - type: 'bind'
+        source: './utils'
+        target: '/error_handler/utils'
+    networks:
+      - 'rabbit_python'
+
 networks:
   rabbit_python:
     driver: 'bridge'

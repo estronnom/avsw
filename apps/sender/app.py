@@ -1,5 +1,6 @@
+import json
 import os
-import mimetypes
+import subprocess
 
 from utils.mqinterface import get_pika_connection
 
@@ -15,15 +16,43 @@ channel.queue_declare(PARSER_QUEUE)
 channel.queue_declare(ERRORS_QUEUE)
 
 
+def publish_message(queue, body):
+    try:
+        channel.basic_publish(
+            exchange='',
+            routing_key=queue,
+            body=body
+        )
+    except Exception as exc:
+        print(f'Publish to {queue} failed')
+        print(exc)
+        return False
+    else:
+        print(f'Payload to {queue} successfully sent')
+        return True
+
+
+def is_file_text(path):
+    file_info = subprocess.Popen(['file', path], stdout=subprocess.PIPE)
+    file_info = file_info.communicate()[0].decode()
+    file_info = file_info.split(':')[1].split(';')[0]
+    return 'text' in file_info
+
+
 def callback(ch, method, properties, body):
     print('Sender got a callback!')
+    body_decoded = json.loads(body.decode())
+    path = body_decoded["path"]
+    queue = PARSER_QUEUE if is_file_text(path) else ERRORS_QUEUE
+    if publish_message(queue, body):
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+        print('Message acknowledged')
 
 
 def main():
     channel.basic_consume(
         SPIDER_QUEUE,
-        callback,
-        auto_ack=True
+        callback
     )
     print('Sender ready to consume!')
     channel.start_consuming()

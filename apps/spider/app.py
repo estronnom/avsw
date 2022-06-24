@@ -1,3 +1,4 @@
+import json
 import secrets
 import os
 from telebot import TeleBot
@@ -17,17 +18,22 @@ def send_file_to_queue(path, chat_id):
     channel = connection.channel()
     channel.queue_declare(SPIDER_QUEUE)
 
-    payload = f'{path}:{chat_id}'.encode()
+    body = {
+        "path": path,
+        "chat_id": chat_id
+    }
+    body = json.dumps(body).encode()
     try:
         channel.basic_publish(
             exchange='',
             routing_key=SPIDER_QUEUE,
-            body=payload
+            body=body
         )
-        print(f'Payload to {SPIDER_QUEUE} successfully sent')
     except Exception as exc:
-        print(f'{payload} publish failed')
+        print(f'Publish to {SPIDER_QUEUE} failed')
         print(exc)
+    else:
+        print(f'Payload to {SPIDER_QUEUE} successfully sent')
     finally:
         connection.close()
 
