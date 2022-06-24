@@ -13,10 +13,8 @@ services:
   db:
     image: 'mysql'
     restart: 'always'
-    environment:
-      MYSQL_USER: 'estronnom'
-      MYSQL_PASSWORD: '1234567890'
-      MYSQL_ROOT_PASSWORD: '1234567890'
+    env_file:
+      - '.env'
     ports:
       - '3306:3306'
     volumes:
@@ -26,6 +24,8 @@ services:
 
   spider:
     build: './apps/spider/'
+    env_file:
+      - '.env'
     volumes:
       - type: 'bind'
         source: './processed_files'
@@ -33,6 +33,26 @@ services:
       - type: 'bind'
         source: './raw_files'
         target: '/spider/raw_files'
+      - type: 'bind'
+        source: './utils'
+        target: '/spider/utils'
+    networks:
+      - 'rabbit_python'
+
+  sender:
+    build: './apps/sender/'
+    env_file:
+      - '.env'
+    volumes:
+      - type: 'bind'
+        source: './processed_files'
+        target: '/sender/processed_files'
+      - type: 'bind'
+        source: './raw_files'
+        target: '/sender/raw_files'
+      - type: 'bind'
+        source: './utils'
+        target: '/sender/utils'
     networks:
       - 'rabbit_python'
 
