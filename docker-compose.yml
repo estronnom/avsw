@@ -7,6 +7,8 @@ services:
     ports:
       - '5672:5672'
       - '15672:15672'
+    volumes:
+      - 'rabbitmq-data:/var/lib/rabbitmq'
     networks:
       - 'rabbit_python'
 
@@ -45,9 +47,6 @@ services:
       - '.env'
     volumes:
       - type: 'bind'
-        source: './processed_files'
-        target: '/sender/processed_files'
-      - type: 'bind'
         source: './raw_files'
         target: '/sender/raw_files'
       - type: 'bind'
@@ -67,11 +66,40 @@ services:
     networks:
       - 'rabbit_python'
 
+  parser:
+    build: './apps/parser/'
+    env_file:
+      - '.env'
+    volumes:
+      - type: 'bind'
+        source: './raw_files'
+        target: '/parser/raw_files'
+      - type: 'bind'
+        source: './utils'
+        target: '/parser/utils'
+    networks:
+      - 'rabbit_python'
+
+#  reader:
+#    build: './apps/reader/'
+#    env_file:
+#      - '.env'
+#    volumes:
+#      - type: 'bind'
+#        source: './processed_files'
+#        target: '/reader/processed_files'
+#      - type: 'bind'
+#        source: './utils'
+#        target: '/reader/utils'
+#    networks:
+#      - 'rabbit_python'
+
 networks:
   rabbit_python:
     driver: 'bridge'
 
 volumes:
   db-volume:
+  rabbitmq-data:
 
 

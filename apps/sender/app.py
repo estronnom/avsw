@@ -2,7 +2,7 @@ import json
 import os
 import subprocess
 
-from utils.mqinterface import get_pika_connection
+from utils.mqinterface import get_pika_connection, publish_message
 
 RABBITMQ_HOST = os.environ['RABBITMQ_HOST']
 SPIDER_QUEUE = os.environ['SPIDER_QUEUE']
@@ -11,25 +11,9 @@ ERRORS_QUEUE = os.environ['ERRORS_QUEUE']
 
 connection = get_pika_connection(RABBITMQ_HOST)
 channel = connection.channel()
-channel.queue_declare(SPIDER_QUEUE)
-channel.queue_declare(PARSER_QUEUE)
-channel.queue_declare(ERRORS_QUEUE)
-
-
-def publish_message(queue, body):
-    try:
-        channel.basic_publish(
-            exchange='',
-            routing_key=queue,
-            body=body
-        )
-    except Exception as exc:
-        print(f'Publish to {queue} failed')
-        print(exc)
-        return False
-    else:
-        print(f'Payload to {queue} successfully sent')
-        return True
+channel.queue_declare(SPIDER_QUEUE, durable=True)
+channel.queue_declare(PARSER_QUEUE, durable=True)
+channel.queue_declare(ERRORS_QUEUE, durable=True)
 
 
 def is_file_text(path):
@@ -44,7 +28,7 @@ def callback(ch, method, properties, body):
     body_decoded = json.loads(body.decode())
     path = body_decoded["path"]
     queue = PARSER_QUEUE if is_file_text(path) else ERRORS_QUEUE
-    if publish_message(queue, body):
+    if publish_message(channel, queue, body):
         channel.basic_ack(delivery_tag=method.delivery_tag)
         print('Message acknowledged')
 

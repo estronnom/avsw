@@ -4,7 +4,7 @@ import os
 from telebot import TeleBot
 import requests
 
-from utils.mqinterface import get_pika_connection
+from utils.mqinterface import get_pika_connection, publish_message
 
 RABBITMQ_HOST = os.environ['RABBITMQ_HOST']
 SPIDER_QUEUE = os.environ['SPIDER_QUEUE']
@@ -16,26 +16,16 @@ bot = TeleBot(TG_API_KEY)
 def send_file_to_queue(path, chat_id):
     connection = get_pika_connection(RABBITMQ_HOST)
     channel = connection.channel()
-    channel.queue_declare(SPIDER_QUEUE)
+    channel.queue_declare(SPIDER_QUEUE, durable=True)
 
     body = {
         "path": path,
         "chat_id": chat_id
     }
     body = json.dumps(body).encode()
-    try:
-        channel.basic_publish(
-            exchange='',
-            routing_key=SPIDER_QUEUE,
-            body=body
-        )
-    except Exception as exc:
-        print(f'Publish to {SPIDER_QUEUE} failed')
-        print(exc)
-    else:
-        print(f'Payload to {SPIDER_QUEUE} successfully sent')
-    finally:
-        connection.close()
+    result = publish_message(channel, SPIDER_QUEUE, body)
+    connection.close()
+    return result
 
 
 def write_file(file_bytes, file_name):
@@ -85,8 +75,7 @@ def document_handler(message):
     file_obj = bot.get_file(message.document.file_id)
     file_bytes = bot.download_file(file_obj.file_path)
     path = write_file(file_bytes, file_name)
-    if path:
-        send_file_to_queue(path, message.chat.id)
+    if path and send_file_to_queue(path, message.chat.id):
         bot.send_message(
             message.chat.id,
             'Файл успешно загружен и направлен в обработку')
@@ -99,8 +88,7 @@ def document_handler(message):
 @bot.message_handler()
 def url_handler(message):
     path = download_webpage(message.text)
-    if path:
-        send_file_to_queue(path, message.chat.id)
+    if path and send_file_to_queue(path, message.chat.id):
         bot.send_message(
             message.chat.id,
             'Файл успешно загружен и направлен в обработку')
