@@ -36,7 +36,8 @@ db.execute(
     "CREATE TABLE IF NOT EXISTS word_file ("
     "word_id INT NOT NULL, "
     "file_id INT NOT NULL,"
-    "FOREIGN KEY (word_id) REFERENCES words(word_id),"
+    "FOREIGN KEY (word_id) REFERENCES words(word_id) "
+    "ON DELETE CASCADE ,"
     "FOREIGN KEY (file_id) REFERENCES files(file_id),"
     "UNIQUE (word_id, file_id)"
     ");"
@@ -108,10 +109,6 @@ def callback(ch, method, properties, body):
     file_name = os.path.split(path)[-1]
     if words_dict:
         insert_words(words_dict, file_name)
-        body = {
-            "message": "inserted"
-        }
-        body = json.dumps(body)
         if publish_message(channel, READER_QUEUE, body):
             channel.basic_ack(delivery_tag=method.delivery_tag)
             print('Parser acknowledged message')

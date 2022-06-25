@@ -1,3 +1,5 @@
 PyTelegramBotAPI
 requests
 pika
+bs4
+lxml

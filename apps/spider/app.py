@@ -2,6 +2,7 @@ import json
 import secrets
 import os
 from telebot import TeleBot
+from bs4 import BeautifulSoup
 import requests
 
 from utils.mqinterface import get_pika_connection, publish_message
@@ -44,16 +45,20 @@ def write_file(file_bytes, file_name):
 def download_webpage(url):
     try:
         r = requests.get(url)
+        r.encoding = 'utf-8'
     except OSError as exc:
         print(f'Request to {url} failed')
         print(exc)
         return None
 
+    soup = BeautifulSoup(r.text, 'lxml')
+    page_text = soup.get_text(' ')
+
     token = secrets.token_urlsafe(16)
     path = './raw_files/' + token + '.txt'
     try:
         with open(path, 'x', encoding='utf-8') as fh:
-            fh.write(r.text)
+            fh.write(page_text)
     except Exception as exc:
         print(f'Write to {path} failed')
         print(exc)
@@ -62,7 +67,7 @@ def download_webpage(url):
         return path
 
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start', 'help'])
 def start_handler(message):
     bot.send_message(
         message.chat.id,
@@ -75,6 +80,7 @@ def document_handler(message):
     file_obj = bot.get_file(message.document.file_id)
     file_bytes = bot.download_file(file_obj.file_path)
     path = write_file(file_bytes, file_name)
+
     if path and send_file_to_queue(path, message.chat.id):
         bot.send_message(
             message.chat.id,
@@ -88,14 +94,21 @@ def document_handler(message):
 @bot.message_handler()
 def url_handler(message):
     path = download_webpage(message.text)
+
     if path and send_file_to_queue(path, message.chat.id):
+        file_name = os.path.split(path)[-1]
         bot.send_message(
             message.chat.id,
-            'Файл успешно загружен и направлен в обработку')
+            f'Файл {file_name} успешно загружен и направлен в обработку')
     else:
         bot.send_message(
             message.chat.id,
             'Ошибка запроса к сайту, проверьте корректность URL')
+
+
+@bot.message_handler(commands=['dump'])
+def dump_files(message):
+    pass
 
 
 if __name__ == '__main__':

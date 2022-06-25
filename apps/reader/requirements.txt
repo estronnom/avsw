@@ -1,2 +1,3 @@
+PyTelegramBotAPI
 mysql-connector-python
 pika
