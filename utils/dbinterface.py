@@ -39,5 +39,6 @@ class Database:
                 print('Trying to execute query one more time')
                 return self.execute(query, params, True)
         else:
+            data = self.cur.fetchall()
             self.conn.commit()
-            return tuple(self.cur)
+            return data

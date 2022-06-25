@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import time
 from collections import defaultdict
 
 from utils.dbinterface import Database
@@ -36,7 +37,8 @@ db.execute(
     "word_id INT NOT NULL, "
     "file_id INT NOT NULL,"
     "FOREIGN KEY (word_id) REFERENCES words(word_id),"
-    "FOREIGN KEY (file_id) REFERENCES files(file_id)"
+    "FOREIGN KEY (file_id) REFERENCES files(file_id),"
+    "UNIQUE (word_id, file_id)"
     ");"
 )
 
@@ -47,27 +49,33 @@ channel.queue_declare(READER_QUEUE, durable=True)
 
 
 def insert_words(words_dict, file_name):
+    x0 = time.time()
     db.execute(
         "INSERT IGNORE INTO files(file_name)"
         "VALUES (%s)",
         (file_name,)
     )
+    file_id = db.execute(
+        "SELECT file_id FROM files WHERE "
+        "file_name = %s",
+        (file_name,))[0][0]
+
     for word, counter in words_dict.items():
         db.execute(
             "INSERT INTO words(word, counter) "
-            "VALUES (%s, %s)"
+            "VALUES (%s, %s) "
             "ON DUPLICATE KEY UPDATE counter=counter+%s",
             (word, counter, counter)
         )
         db.execute(
-            "INSERT INTO word_file(word_id, file_id)"
+            "INSERT IGNORE INTO word_file(word_id, file_id) "
             "SELECT"
             "(SELECT word_id FROM words"
             " WHERE word=%s),"
-            "(SELECT file_id FROM files WHERE"
-            " file_name=%s)",
-            (word, file_name)
+            "%s",
+            (word, file_id)
         )
+    print(time.time() - x0)
 
 
 def parse_file(path):
@@ -101,8 +109,9 @@ def callback(ch, method, properties, body):
     if words_dict:
         insert_words(words_dict, file_name)
         body = {
-            "file_name": f"{file_name}"
+            "message": "inserted"
         }
+        body = json.dumps(body)
         if publish_message(channel, READER_QUEUE, body):
             channel.basic_ack(delivery_tag=method.delivery_tag)
             print('Parser acknowledged message')

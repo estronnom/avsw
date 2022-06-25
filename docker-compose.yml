@@ -80,19 +80,19 @@ services:
     networks:
       - 'rabbit_python'
 
-#  reader:
-#    build: './apps/reader/'
-#    env_file:
-#      - '.env'
-#    volumes:
-#      - type: 'bind'
-#        source: './processed_files'
-#        target: '/reader/processed_files'
-#      - type: 'bind'
-#        source: './utils'
-#        target: '/reader/utils'
-#    networks:
-#      - 'rabbit_python'
+  reader:
+    build: './apps/reader/'
+    env_file:
+      - '.env'
+    volumes:
+      - type: 'bind'
+        source: './processed_files'
+        target: '/reader/processed_files'
+      - type: 'bind'
+        source: './utils'
+        target: '/reader/utils'
+    networks:
+      - 'rabbit_python'
 
 networks:
   rabbit_python:
