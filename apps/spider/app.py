@@ -1,6 +1,8 @@
+import io
+import os
 import json
 import secrets
-import os
+import zipfile
 from telebot import TeleBot
 from bs4 import BeautifulSoup
 import requests
@@ -27,6 +29,16 @@ def send_file_to_queue(path, chat_id):
     result = publish_message(channel, SPIDER_QUEUE, body)
     connection.close()
     return result
+
+
+def generate_dump():
+    zip_bytes = io.BytesIO()
+    with zipfile.ZipFile(zip_bytes, 'w') as zip_handle:
+        for target_dir in ('raw_files', 'processed_files'):
+            for file in os.listdir('./' + target_dir):
+                dest_path = './' + target_dir + '/' + file
+                zip_handle.write(dest_path)
+    return zip_bytes.getvalue()
 
 
 def write_file(file_bytes, file_name):
@@ -84,11 +96,23 @@ def document_handler(message):
     if path and send_file_to_queue(path, message.chat.id):
         bot.send_message(
             message.chat.id,
-            'Файл успешно загружен и направлен в обработку')
+            'Файл успешно загружен и направлен в обработку'
+        )
     else:
         bot.send_message(
             message.chat.id,
-            'Произошла ошибка скачивания файла')
+            'Произошла ошибка скачивания файла'
+        )
+
+
+@bot.message_handler(commands=['dump'])
+def dump_files(message):
+    zip_file = generate_dump()
+    bot.send_document(
+        message.chat.id,
+        zip_file,
+        visible_file_name='dump.zip'
+    )
 
 
 @bot.message_handler()
@@ -99,16 +123,13 @@ def url_handler(message):
         file_name = os.path.split(path)[-1]
         bot.send_message(
             message.chat.id,
-            f'Файл {file_name} успешно загружен и направлен в обработку')
+            f'Файл {file_name} успешно загружен и направлен в обработку'
+        )
     else:
         bot.send_message(
             message.chat.id,
-            'Ошибка запроса к сайту, проверьте корректность URL')
-
-
-@bot.message_handler(commands=['dump'])
-def dump_files(message):
-    pass
+            'Ошибка запроса к сайту, проверьте корректность URL'
+        )
 
 
 if __name__ == '__main__':
