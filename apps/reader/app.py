@@ -1,5 +1,6 @@
 import os
 import json
+import time
 
 from telebot import TeleBot
 
@@ -65,6 +66,7 @@ def observe_db(token):
 
 
 def callback(ch, method, properties, body):
+    x0 = time.time()
     print('Reader got a callback!')
     body_decoded = json.loads(body.decode())
     chat_id = body_decoded["chat_id"]
@@ -81,6 +83,7 @@ def callback(ch, method, properties, body):
         )
         channel.basic_ack(delivery_tag=method.delivery_tag)
         print('Reader acknowledged message')
+    print(time.time() - x0)
 
 
 def main():

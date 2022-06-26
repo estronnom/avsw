@@ -52,9 +52,8 @@ channel.queue_declare(READER_QUEUE, durable=True)
 
 
 def insert_words(words_dict, file_name, token):
-    x0 = time.time()
     db.execute(
-        "INSERT IGNORE INTO files(file_name)"
+        "INSERT IGNORE INTO files(file_name) "
         "VALUES (%s)",
         (file_name,)
     )
@@ -63,23 +62,26 @@ def insert_words(words_dict, file_name, token):
         "file_name = %s",
         (file_name,))[0][0]
 
-    for word, counter in words_dict.items():
-        db.execute(
-            "INSERT INTO words(word, counter, token) "
-            "VALUES (%s, %s, %s) "
-            "ON DUPLICATE KEY UPDATE counter=counter+%s, "
-            "token=%s ",
-            (word, counter, token, counter, token)
-        )
-        db.execute(
-            "INSERT IGNORE INTO word_file(word_id, file_id) "
-            "SELECT"
-            "(SELECT word_id FROM words"
-            " WHERE word=%s),"
-            "%s",
-            (word, file_id)
-        )
-    print(time.time() - x0)
+    query = "INSERT INTO words(word, counter, token) VALUES "
+    values_list = [f"('{word}', {counter}, '{token}')" for
+                   word, counter
+                   in words_dict.items()]
+    values_list = ', '.join(values_list)
+    query_end = " ON DUPLICATE KEY UPDATE words.counter = " \
+                "words.counter + VALUES(" \
+                "words.counter), words.token = VALUES(words.token)"
+    query = query + values_list + query_end
+    db.execute(
+        query
+    )
+
+    db.execute(
+        "INSERT IGNORE INTO word_file(word_id, file_id) "
+        "SELECT word_id, %s "
+        "FROM words "
+        "WHERE token = %s",
+        (file_id, token)
+    )
 
 
 def parse_file(path):
@@ -106,6 +108,7 @@ def parse_file(path):
 
 def callback(ch, method, properties, body):
     print('Parser got a callback!')
+    x0 = time.time()
     body_decoded = json.loads(body.decode())
     path = body_decoded["path"]
     words_dict = parse_file(path)
@@ -118,6 +121,7 @@ def callback(ch, method, properties, body):
         if publish_message(channel, READER_QUEUE, body):
             channel.basic_ack(delivery_tag=method.delivery_tag)
             print('Parser acknowledged message')
+    print(time.time() - x0)
 
 
 def main():
