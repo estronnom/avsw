@@ -108,7 +108,7 @@ def parse_file(path):
 
 def callback(ch, method, properties, body):
     print('Parser got a callback!')
-    x0 = time.time()
+    benchmark = time.time()
     body_decoded = json.loads(body.decode())
     path = body_decoded["path"]
     words_dict = parse_file(path)
@@ -121,7 +121,7 @@ def callback(ch, method, properties, body):
         if publish_message(channel, READER_QUEUE, body):
             channel.basic_ack(delivery_tag=method.delivery_tag)
             print('Parser acknowledged message')
-    print(time.time() - x0)
+    print(time.time() - benchmark)
 
 
 def main():

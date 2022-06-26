@@ -8,7 +8,7 @@ services:
       - '5672:5672'
       - '15672:15672'
     volumes:
-      - 'rabbitmq-data:/var/lib/rabbitmq'
+      - 'rabbitmq-volume:/var/lib/rabbitmq'
     networks:
       - 'rabbit_python'
 
@@ -26,6 +26,7 @@ services:
 
   spider:
     build: './apps/spider/'
+    restart: 'always'
     env_file:
       - '.env'
     volumes:
@@ -43,6 +44,7 @@ services:
 
   sender:
     build: './apps/sender/'
+    restart: 'always'
     env_file:
       - '.env'
     volumes:
@@ -57,6 +59,7 @@ services:
 
   error_handler:
     build: './apps/error_handler/'
+    restart: 'always'
     env_file:
       - '.env'
     volumes:
@@ -68,6 +71,7 @@ services:
 
   parser:
     build: './apps/parser/'
+    restart: 'always'
     env_file:
       - '.env'
     volumes:
@@ -82,6 +86,7 @@ services:
 
   reader:
     build: './apps/reader/'
+    restart: 'always'
     env_file:
       - '.env'
     volumes:
@@ -100,6 +105,6 @@ networks:
 
 volumes:
   db-volume:
-  rabbitmq-data:
+  rabbitmq-volume:
 
 

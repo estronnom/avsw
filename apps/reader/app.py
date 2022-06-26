@@ -66,8 +66,8 @@ def observe_db(token):
 
 
 def callback(ch, method, properties, body):
-    x0 = time.time()
     print('Reader got a callback!')
+    benchmark = time.time()
     body_decoded = json.loads(body.decode())
     chat_id = body_decoded["chat_id"]
     path = body_decoded["path"]
@@ -83,7 +83,7 @@ def callback(ch, method, properties, body):
         )
         channel.basic_ack(delivery_tag=method.delivery_tag)
         print('Reader acknowledged message')
-    print(time.time() - x0)
+    print(time.time() - benchmark)
 
 
 def main():
