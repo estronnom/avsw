@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import secrets
 from collections import defaultdict
 
 from utils.dbinterface import Database
@@ -23,7 +24,8 @@ db.execute(
     "CREATE TABLE IF NOT EXISTS words ("
     "word_id INT PRIMARY KEY AUTO_INCREMENT, "
     "word VARCHAR(255) UNIQUE NOT NULL, "
-    "counter INT"
+    "counter INT, "
+    "token VARCHAR(32)"
     ");"
 )
 db.execute(
@@ -49,7 +51,7 @@ channel.queue_declare(PARSER_QUEUE, durable=True)
 channel.queue_declare(READER_QUEUE, durable=True)
 
 
-def insert_words(words_dict, file_name):
+def insert_words(words_dict, file_name, token):
     x0 = time.time()
     db.execute(
         "INSERT IGNORE INTO files(file_name)"
@@ -63,10 +65,11 @@ def insert_words(words_dict, file_name):
 
     for word, counter in words_dict.items():
         db.execute(
-            "INSERT INTO words(word, counter) "
-            "VALUES (%s, %s) "
-            "ON DUPLICATE KEY UPDATE counter=counter+%s",
-            (word, counter, counter)
+            "INSERT INTO words(word, counter, token) "
+            "VALUES (%s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE counter=counter+%s, "
+            "token=%s ",
+            (word, counter, token, counter, token)
         )
         db.execute(
             "INSERT IGNORE INTO word_file(word_id, file_id) "
@@ -108,7 +111,10 @@ def callback(ch, method, properties, body):
     words_dict = parse_file(path)
     file_name = os.path.split(path)[-1]
     if words_dict:
-        insert_words(words_dict, file_name)
+        token = secrets.token_urlsafe(16)
+        insert_words(words_dict, file_name, token)
+        body_decoded["token"] = token
+        body = json.dumps(body_decoded)
         if publish_message(channel, READER_QUEUE, body):
             channel.basic_ack(delivery_tag=method.delivery_tag)
             print('Parser acknowledged message')

@@ -29,11 +29,12 @@ TG_API_KEY = os.environ['TG_API_KEY']
 bot = TeleBot(TG_API_KEY)
 
 
-def clear_db():
+def clear_db(token):
     db.execute(
         "DELETE FROM words "
-        "WHERE counter >= %s",
-        (WORD_COUNTER,)
+        "WHERE counter >= %s AND "
+        "token = %s",
+        (WORD_COUNTER, token)
     )
 
 
@@ -50,15 +51,15 @@ def generate_files(data_list):
     return True
 
 
-def observe_db():
+def observe_db(token):
     data_list = db.execute(
         "SELECT w.word, f.file_name "
         "FROM word_file "
         "JOIN words w ON w.word_id = word_file.word_id "
-        "AND w.counter >= %s "
+        "AND w.counter >= %s AND w.token = %s "
         "JOIN files f ON f.file_id = word_file.file_id "
         "ORDER BY 1",
-        (WORD_COUNTER,)
+        (WORD_COUNTER, token)
     )
     return data_list
 
@@ -66,14 +67,14 @@ def observe_db():
 def callback(ch, method, properties, body):
     print('Reader got a callback!')
     body_decoded = json.loads(body.decode())
-    print(body_decoded)
     chat_id = body_decoded["chat_id"]
     path = body_decoded["path"]
+    token = body_decoded["token"]
     file_name = os.path.split(path)[-1]
-    data_list = observe_db()
+    data_list = observe_db(token)
 
     if generate_files(data_list):
-        clear_db()
+        clear_db(token)
         bot.send_message(
             chat_id,
             f'Файл {file_name} успешно обработан'
